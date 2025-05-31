@@ -1,0 +1,798 @@
+import React, { useState, useMemo } from 'react';
+import { Plus, Search, Filter, Calendar, User, CheckCircle2, Circle, Clock, AlertCircle, Edit2, Trash2 } from 'lucide-react';
+
+const TaskTracker = () => {
+  const [tasks, setTasks] = useState([
+    {
+      id: 1,
+      title: "Design new landing page",
+      status: "In Progress",
+      priority: "High",
+      assignee: "Sarah Johnson",
+      dueDate: "2025-06-05",
+      project: "Website Redesign",
+      tags: ["Design", "Frontend"]
+    },
+    {
+      id: 2,
+      title: "Implement user authentication",
+      status: "To Do",
+      priority: "High",
+      assignee: "Mike Chen",
+      dueDate: "2025-06-08",
+      project: "User Management",
+      tags: ["Backend", "Security"]
+    },
+    {
+      id: 3,
+      title: "Write API documentation",
+      status: "In Progress",
+      priority: "Medium",
+      assignee: "Alex Rivera",
+      dueDate: "2025-06-10",
+      project: "Documentation",
+      tags: ["Documentation", "API"]
+    },
+    {
+      id: 4,
+      title: "Set up CI/CD pipeline",
+      status: "Done",
+      priority: "High",
+      assignee: "Sarah Johnson",
+      dueDate: "2025-06-01",
+      project: "DevOps",
+      tags: ["DevOps", "Automation"]
+    },
+    {
+      id: 5,
+      title: "User testing sessions",
+      status: "To Do",
+      priority: "Medium",
+      assignee: "Emma Davis",
+      dueDate: "2025-06-12",
+      project: "User Research",
+      tags: ["Research", "Testing"]
+    }
+  ]);
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('All');
+  const [filterPriority, setFilterPriority] = useState('All');
+  const [showNewTaskForm, setShowNewTaskForm] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [formErrors, setFormErrors] = useState({ title: '', dueDate: '' });
+  const [taskToDelete, setTaskToDelete] = useState(null);
+  const [sortColumn, setSortColumn] = useState('title');
+  const [sortDirection, setSortDirection] = useState('asc');
+
+  const [newTask, setNewTask] = useState({
+    title: '',
+    status: 'To Do',
+    priority: 'Medium',
+    assignee: '',
+    dueDate:
+
+ '',
+    project: '',
+    tags: []
+  });
+
+  const statusColors = {
+    'To Do': 'bg-gray-100 text-gray-800',
+    'In Progress': 'bg-blue-100 text-blue-800',
+    'Done': 'bg-green-100 text-green-800',
+    'Blocked': 'bg-red-100 text-red-800'
+  };
+
+  const priorityColors = {
+    'Low': 'bg-green-100 text-green-800',
+    'Medium': 'bg-yellow-100 text-yellow-800',
+    'High': 'bg-red-100 text-red-800'
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'Done':
+        return <CheckCircle2 className="w-4 h-4 text-green-600" />;
+      case 'In Progress':
+        return <Clock className="w-4 h-4 text-blue-600" />;
+      case 'Blocked':
+        return <AlertCircle className="w-4 h-4 text-red-600" />;
+      default:
+        return <Circle className="w-4 h-4 text-gray-400" />;
+    }
+  };
+
+  const filteredTasks = useMemo(() => {
+    let sortedTasks = [...tasks].filter(task => {
+      const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           task.project.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           task.assignee.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = filterStatus === 'All' || task.status === filterStatus;
+      const matchesPriority = filterPriority === 'All' || task.priority === filterPriority;
+      
+      return matchesSearch && matchesStatus && matchesPriority;
+    });
+
+    sortedTasks.sort((a, b) => {
+      const aValue = a[sortColumn];
+      const bValue = b[sortColumn];
+      
+      if (sortColumn === 'dueDate') {
+        return sortDirection === 'asc'
+          ? new Date(aValue) - new Date(bValue)
+          : new Date(bValue) - new Date(aValue);
+      }
+      
+      if (typeof aValue === 'string') {
+        return sortDirection === 'asc'
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+      
+      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+    });
+
+    return sortedTasks;
+  }, [tasks, searchTerm, filterStatus, filterPriority, sortColumn, sortDirection]);
+
+  const handleAddTask = () => {
+    const errors = {};
+    if (!newTask.title.trim()) errors.title = 'Task title is required';
+    if (!newTask.dueDate) errors.dueDate = 'Due date is required';
+
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    const task = {
+      ...newTask,
+      id: Math.max(...tasks.map(t => t.id), 0) + 1,
+      tags: newTask.tags.filter(tag => tag.trim() !== '')
+    };
+
+    setTasks([...tasks, task]);
+    setNewTask({
+      title: '',
+      status: 'To Do',
+      priority: 'Medium',
+      assignee: '',
+      dueDate: '',
+      project: '',
+      tags: []
+    });
+    setShowNewTaskForm(false);
+    setFormErrors({ title: '', dueDate: '' });
+  };
+
+  const handleUpdateTask = (taskId, updates) => {
+    setTasks(tasks.map(task => 
+      task.id === taskId ? { ...task, ...updates } : task
+    ));
+  };
+
+  const handleDeleteTask = (taskId) => {
+    setTasks(tasks.filter(task => task.id !== taskId));
+    setTaskToDelete(null);
+  };
+
+  const handleEditTask = () => {
+    const errors = {};
+    if (!editingTask.title.trim()) errors.title = 'Task title is required';
+    if (!editingTask.dueDate) errors.dueDate = 'Due date is required';
+
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    const updatedTask = {
+      ...editingTask,
+      tags: editingTask.tags.filter(tag => tag.trim() !== '')
+    };
+
+    setTasks(tasks.map(task => 
+      task.id === editingTask.id ? updatedTask : task
+    ));
+    setEditingTask(null);
+    setFormErrors({ title: '', dueDate: '' });
+  };
+
+  const handleStatusChange = (taskId, newStatus) => {
+    handleUpdateTask(taskId, { status: newStatus });
+  };
+
+  const handleSort = (column) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const getDaysUntilDue = (dueDate) => {
+    const today = new Date();
+    const due = new Date(dueDate);
+    const diffTime = due - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const formatDueDate = (dueDate) => {
+    const days = getDaysUntilDue(dueDate);
+    if (days < 0) return `${Math.abs(days)} days overdue`;
+    if (days === 0) return 'Due today';
+    if (days === 1) return 'Due tomorrow';
+    return `Due in ${days} days`;
+  };
+
+  const DeleteConfirmationModal = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-sm">
+        <div className="p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Delete Task</h2>
+          <p className="text-sm text-gray-600 mb-6">
+            Are you sure you want to delete this task? This action cannot be undone.
+          </p>
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => setTaskToDelete(null)}
+              className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDeleteTask(taskToDelete)}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                TaskFlow
+              </h1>
+              <div className="hidden lg:flex items-center space-x-2 text-sm text-gray-500">
+                <span>Main Workspace</span>
+                <span>/</span>
+                <span>All Projects</span>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <div className="relative hidden sm:block">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Search tasks..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent w-48 lg:w-64"
+                />
+              </div>
+              
+              <button
+                onClick={() => setShowNewTaskForm(true)}
+                className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-200 flex items-center space-x-1 sm:space-x-2 shadow-lg hover:shadow-xl"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">New Task</span>
+                <span className="sm:hidden">New</span>
+              </button>
+            </div>
+          </div>
+          
+          {/* Mobile Search */}
+          <div className="sm:hidden pb-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search tasks..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+        {/* Filters */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 sm:gap-4">
+            <div className="flex items-center space-x-2">
+              <Filter className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Filters:</span>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm w-full sm:w-auto"
+              >
+                <option value="All">All Status</option>
+                <option value="To Do">To Do</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Done">Done</option>
+                <option value="Blocked">Blocked</option>
+              </select>
+              
+              <select
+                value={filterPriority}
+                onChange={(e) => setFilterPriority(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm w-full sm:w-auto"
+              >
+                <option value="All">All Priority</option>
+                <option value="Low">Low Priority</option>
+                <option value="Medium">Medium Priority</option>
+                <option value="High">High Priority</option>
+              </select>
+            </div>
+            
+            <div className="text-sm text-gray-500">
+              Showing {filteredTasks.length} of {tasks.length} tasks
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Task Cards */}
+        <div className="block lg:hidden space-y-4">
+          {filteredTasks.map((task) => (
+            <div key={task.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-start space-x-3 flex-1">
+                  {getStatusIcon(task.status)}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-medium text-gray-900 truncate">{task.title}</h3>
+                    <p className="text-xs text-gray-500 mt-1">{task.project}</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2 ml-2">
+                  <button
+                    onClick={() => setEditingTask(task)}
+                    className="text-gray-400 hover:text-blue-600 transition-colors p-1"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setTaskToDelete(task.id)}
+                    className="text-gray-400 hover:text-red-600 transition-colors p-1"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Status</label>
+                  <select
+                    value={task.status}
+                    onChange={(e) => handleStatusChange(task.id, e.target.value)}
+                    className={`w-full px-2 py-1 rounded-full text-xs font-medium border-0 ${statusColors[task.status]} cursor-pointer`}
+                  >
+                    <option value="To Do">To Do</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Done">Done</option>
+                    <option value="Blocked">Blocked</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Priority</label>
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${priorityColors[task.priority]} w-full justify-center`}>
+                    {task.priority}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <User className="w-3 h-3 text-gray-400" />
+                  <span className="text-xs text-gray-600">{task.assignee}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Calendar className="w-3 h-3 text-gray-400" />
+                  <div className="text-xs">
+                    <span className="text-gray-900">{task.dueDate}</span>
+                    <span className={`ml-2 ${getDaysUntilDue(task.dueDate) < 0 ? 'text-red-600' : getDaysUntilDue(task.dueDate) <= 2 ? 'text-yellow-600' : 'text-gray-500'}`}>
+                      ({formatDueDate(task.dueDate)})
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              {task.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-3">
+                  {task.tags.map((tag, index) => (
+                    <span key={index} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop Task Table */}
+        <div className="hidden lg:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th 
+                    className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('title')}
+                  >
+                    Task {sortColumn === 'title' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th 
+                    className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('status')}
+                  >
+                    Status {sortColumn === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th 
+                    className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('priority')}
+                  >
+                    Priority {sortColumn === 'priority' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th 
+                    className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('assignee')}
+                  >
+                    Assignee {sortColumn === 'assignee' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th 
+                    className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('dueDate')}
+                  >
+                    Due Date {sortColumn === 'dueDate' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th 
+                    className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('project')}
+                  >
+                    Project {sortColumn === 'project' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredTasks.map((task) => (
+                  <tr key={task.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-start space-x-3">
+                        {getStatusIcon(task.status)}
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{task.title}</div>
+                          {task.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {task.tags.map((tag, index) => (
+                                <span key={index} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <select
+                        value={task.status}
+                        onChange={(e) => handleStatusChange(task.id, e.target.value)}
+                        className={`px-3 py-1 rounded-full text-xs font-medium border-0 ${statusColors[task.status]} cursor-pointer`}
+                      >
+                        <option value="To Do">To Do</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Done">Done</option>
+                        <option value="Blocked">Blocked</option>
+                      </select>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${priorityColors[task.priority]}`}>
+                        {task.priority}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-2">
+                        <User className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm text-gray-900">{task.assignee}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <div className="text-sm">
+                          <div className="text-gray-900">{task.dueDate}</div>
+                          <div className={`text-xs ${getDaysUntilDue(task.dueDate) < 0 ? 'text-red-600' : getDaysUntilDue(task.dueDate) <= 2 ? 'text-yellow-600' : 'text-gray-500'}`}>
+                            {formatDueDate(task.dueDate)}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-gray-900">{task.project}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => setEditingTask(task)}
+                          className="text-gray-400 hover:text-blue-600 transition-colors"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setTaskToDelete(task.id)}
+                          className="text-gray-400 hover:text-red-600 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {filteredTasks.length === 0 && (
+          <div className="text-center py-12">
+            <div className="text-gray-500 text-lg">No tasks found</div>
+            <div className="text-gray-400 text-sm mt-2">Try adjusting your search or filters</div>
+          </div>
+        )}
+      </div>
+
+      {/* Edit Task Modal */}
+      {editingTask && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="p-4 sm:p-6">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">Edit Task</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
+                  <input
+                    type="text"
+                    value={editingTask.title}
+                    onChange={(e) => setEditingTask({...editingTask, title: e.target.value})}
+                    className={`w-full px-3 py-2 border ${formErrors.title ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
+                    placeholder="Enter task title..."
+                  />
+                  {formErrors.title && <p className="text-red-500 text-xs mt-1">{formErrors.title}</p>}
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select
+                      value={editingTask.status}
+                      onChange={(e) => setEditingTask({...editingTask, status: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    >
+                      <option value="To Do">To Do</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Done">Done</option>
+                      <option value="Blocked">Blocked</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                    <select
+                      value={editingTask.priority}
+                      onChange={(e) => setEditingTask({...editingTask, priority: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    >
+                      <option value="Low">Low</option>
+                      <option value="Medium">Medium</option>
+                      <option value="High">High</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Assignee</label>
+                  <input
+                    type="text"
+                    value={editingTask.assignee}
+                    onChange={(e) => setEditingTask({...editingTask, assignee: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Enter assignee name..."
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                  <input
+                    type="date"
+                    value={editingTask.dueDate}
+                    onChange={(e) => setEditingTask({...editingTask, dueDate: e.target.value})}
+                    className={`w-full px-3 py-2 border ${formErrors.dueDate ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
+                  />
+                  {formErrors.dueDate && <p className="text-red-500 text-xs mt-1">{formErrors.dueDate}</p>}
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tags (comma separated)</label>
+                  <input
+                    type="text"
+                    value={editingTask.tags.join(', ')}
+                    onChange={(e) => setEditingTask({...editingTask, tags: e.target.value.split(',').map(tag => tag.trim())})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Enter tags separated by commas..."
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
+                  <input
+                    type="text"
+                    value={editingTask.project}
+                    onChange={(e) => setEditingTask({...editingTask, project: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Enter project name..."
+                  />
+                </div>
+                
+                <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setEditingTask(null)}
+                    className="w-full sm:w-auto px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleEditTask}
+                    className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-200"
+                  >
+                    Update Task
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* New Task Modal */}
+      {showNewTaskForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+            <div className="p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Create New Task</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
+                  <input
+                    type="text"
+                    value={newTask.title}
+                    onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                    className={`w-full px-3 py-2 border ${formErrors.title ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
+                    placeholder="Enter task title..."
+                  />
+                  {formErrors.title && <p className="text-red-500 text-xs mt-1">{formErrors.title}</p>}
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select
+                      value={newTask.status}
+                      onChange={(e) => setNewTask({...newTask, status: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    >
+                      <option value="To Do">To Do</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Done">Done</option>
+                      <option value="Blocked">Blocked</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                    <select
+                      value={newTask.priority}
+                      onChange={(e) => setNewTask({...newTask, priority: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    >
+                      <option value="Low">Low</option>
+                      <option value="Medium">Medium</option>
+                      <option value="High">High</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Assignee</label>
+                  <input
+                    type="text"
+                    value={newTask.assignee}
+                    onChange={(e) => setNewTask({...newTask, assignee: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Enter assignee name..."
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                  <input
+                    type="date"
+                    value={newTask.dueDate}
+                    onChange={(e) => setNewTask({...newTask, dueDate: e.target.value})}
+                    className={`w-full px-3 py-2 border ${formErrors.dueDate ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent`}
+                  />
+                  {formErrors.dueDate && <p className="text-red-500 text-xs mt-1">{formErrors.dueDate}</p>}
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tags (comma separated)</label>
+                  <input
+                    type="text"
+                    value={newTask.tags.join(', ')}
+                    onChange={(e) => setNewTask({...newTask, tags: e.target.value.split(',').map(tag => tag.trim())})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Enter tags separated by commas..."
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
+                  <input
+                    type="text"
+                    value={newTask.project}
+                    onChange={(e) => setNewTask({...newTask, project: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Enter project name..."
+                  />
+                </div>
+                
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowNewTaskForm(false)}
+                    className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddTask}
+                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-200"
+                  >
+                    Create Task
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {taskToDelete && <DeleteConfirmationModal />}
+    </div>
+  );
+};
+
+export default TaskTracker;
