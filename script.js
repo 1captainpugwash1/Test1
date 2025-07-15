@@ -125,8 +125,8 @@ class BuildingCodeAI {
     }
 
     async getAIResponse(message) {
-        // Simulate API delay
-        await this.delay(1500);
+        // Simulate AI thinking delay
+        await this.delay(1000 + Math.random() * 1000);
         
         // Simple response logic based on message content
         const lowerMessage = message.toLowerCase();
@@ -141,6 +141,8 @@ class BuildingCodeAI {
             return this.getAccessibilityResponse();
         } else if (lowerMessage.includes('structural') || lowerMessage.includes('structure')) {
             return this.getStructuralResponse();
+        } else if (lowerMessage.includes('energy') || lowerMessage.includes('thermal')) {
+            return this.getEnergyResponse();
         } else if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
             return "Hello! I'm here to help you understand the Building Code of Australia 2022. You can ask me about specific clauses, fire safety requirements, accessibility standards, structural provisions, or search for particular topics. What would you like to know?";
         } else {
@@ -288,6 +290,40 @@ The Building Code ensures structural safety through comprehensive requirements:
 • Seismic zones - Earthquake-resistant design
 
 Would you like me to elaborate on any specific structural aspect or loading requirement?`;
+    }
+
+    getEnergyResponse() {
+        return `**Energy Efficiency Requirements (BCA 2022):**
+
+The Building Code includes comprehensive energy efficiency provisions:
+
+**Thermal Performance Requirements:**
+• **Building thermal envelope** - Insulation and glazing standards
+• **R-values** - Minimum insulation requirements for different climate zones
+• **Glazing performance** - U-values and solar heat gain coefficients
+• **Thermal bridging** - Minimizing heat transfer through structural elements
+
+**Residential Buildings (Class 1):**
+• **Star ratings** - Energy efficiency ratings for new homes
+• **Building fabric** - Wall, roof, and floor insulation requirements
+• **Glazing** - Window performance and shading requirements
+• **Air sealing** - Minimizing air leakage
+
+**Commercial Buildings:**
+• **Section J** - Energy efficiency provisions for Class 2-9 buildings
+• **HVAC systems** - Heating, ventilation, and air conditioning efficiency
+• **Lighting** - Energy-efficient lighting requirements
+• **Building management systems** - Automated energy control
+
+**Compliance Pathways:**
+• **Deemed-to-Satisfy** - Prescriptive requirements
+• **Energy modelling** - Performance-based solutions
+• **Building energy rating** - NABERS and other rating tools
+
+**Climate Zone Considerations:**
+Different requirements apply based on your location's climate zone (1-8).
+
+Would you like specific information about energy requirements for your climate zone or building type?`;
     }
 
     getGeneralResponse(message) {
@@ -511,8 +547,3 @@ document.head.appendChild(style);
 document.addEventListener('DOMContentLoaded', () => {
     new BuildingCodeAI();
 });
-
-// Export for potential module usage
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = BuildingCodeAI;
-}
